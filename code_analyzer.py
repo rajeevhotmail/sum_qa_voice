@@ -1,9 +1,13 @@
+import argparse
+
 from tree_sitter import Language, Parser
 import os
 from pathlib import Path
 import glob
 import re  # For pattern matching
-from typing import Dict, List  # For type hints
+from dataclasses import dataclass
+from typing import Dict, Set, List
+from code_visualizer import DependencyVisualizer
 
 class CodeAnalyzer:
     def __init__(self, directory_path: str):
@@ -154,6 +158,170 @@ class CodeAnalyzer:
            f"Total Functions: {total_functions}\n" \
            f"Overall Complexity: {project_complexity}"
 
+
+@dataclass
+class DependencyNode:
+    name: str
+    file_path: str
+    callers: Set[str]
+    callees: Set[str]
+    variables_used: Set[str]
+    variables_modified: Set[str]
+
+class DependencyTracker:
+    def __init__(self):
+        self.dependency_graph: Dict[str, DependencyNode] = {}
+        self.current_file = None
+        self.parser, self.language = self.setup_parser()
+
+    def find_callers(self, node):
+        query = self.language.query("""
+            (call function: (identifier) @caller)
+        """)
+        callers = set()
+        captures = query.captures(node)
+        for n, _ in captures:
+            callers.add(n.text.decode('utf8'))
+        return callers
+
+    def find_callees(self, node):
+        query = self.language.query("""
+            (call function: (identifier) @callee)
+        """)
+        callees = set()
+        captures = query.captures(node)
+        for n, _ in captures:
+            callees.add(n.text.decode('utf8'))
+        return callees
+
+    def find_variable_usage(self, node):
+        query = self.language.query("""
+            (identifier) @var
+        """)
+        variables = set()
+        captures = query.captures(node)
+        for n, _ in captures:
+            variables.add(n.text.decode('utf8'))
+        return variables
+
+    def find_modified_vars(self, node):
+        query = self.language.query("""
+            (assignment left: (identifier) @var)
+        """)
+        modified = set()
+        captures = query.captures(node)
+        for n, _ in captures:
+            modified.add(n.text.decode('utf8'))
+        return modified
+
+    def setup_parser(self):
+        LANGUAGE_PATH = os.path.expanduser('~/.tree-sitter/tree-sitter-python.so')
+        language = Language(LANGUAGE_PATH, 'python')
+        parser = Parser()
+        parser.set_language(language)
+        return parser, language
+
+    def analyze_function_dependencies(self, node, function_name):
+        callers = self.find_callers(node)
+        callees = self.find_callees(node)
+        vars_used = self.find_variable_usage(node)
+
+        self.dependency_graph[function_name] = DependencyNode(
+            name=function_name,
+            file_path=self.current_file,
+            callers=callers,
+            callees=callees,
+            variables_used=vars_used,
+            variables_modified=self.find_modified_vars(node)
+        )
+    def analyze_files(self, file_paths):
+        for file_path in file_paths:
+            self.current_file = file_path
+            with open(file_path, 'r') as f:  # Remove the hardcoded directory prefix
+                code = f.read()
+            tree = self.parser.parse(bytes(code, "utf8"))
+
+
+            # Get all functions in the file
+            function_query = self.language.query("""
+            (function_definition 
+                name: (identifier) @function.name
+                body: (block) @function.body)
+            """)
+
+            captures = function_query.captures(tree.root_node)
+            for node, capture_name in captures:
+                if capture_name == 'function.name':
+                    function_name = node.text.decode('utf8')
+                    self.analyze_function_dependencies(node.parent, function_name)
+
+        return self.dependency_graph
+
+    def generate_impact_report(self, modified_functions: List[str]):
+        impact = {
+            'high_risk': [],
+            'medium_risk': [],
+            'low_risk': [],
+            'affected_tests': set(),
+            'cascade_effects': []
+        }
+
+        for func in modified_functions:
+            self.analyze_impact(func, impact)
+
+        return self.format_report(impact)
+
+def display_summary_results(results):
+    for result in results:
+        print(f"\nFile: {result['file']}")
+        print(f"Purpose: {result.get('description', 'Data processing and analysis module')}")
+        print("\nFunctions:")
+        for func in result['functions']:
+            print(f"\n  {func['name']}:")
+            print(f"  Description: {func.get('description', 'Handles ' + func['name'].replace('_', ' '))}")
+            print(f"  Complexity Score: {func['complexity']['complexity_score']}")
+            print(f"  Branches: {func['complexity']['branches']}")
+            print(f"  Function Calls: {func['complexity']['calls']}")
+
+def display_dependency_results(results):
+    for func, deps in results.items():
+        print(f"\nFunction: {func}")
+        print(f"Calls: {deps.callees}")
+        print(f"Called by: {deps.callers}")
+        print(f"Variables used: {deps.variables_used}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Analyze Python project')
+    parser.add_argument('--project-dir', required=True, help='Path to the Python project directory')
+    parser.add_argument('--analysis-type', choices=['summary', 'dependency', 'all'],
+                       default='all', help='Type of analysis to perform')
+    args = parser.parse_args()
+
+    python_files = glob.glob(f"{args.project_dir}/**/*.py", recursive=True)
+
+    if args.analysis_type in ['summary', 'all']:
+        print("\nCode Summary Analysis:")
+        print("=====================")
+        analyzer = CodeAnalyzer(args.project_dir)
+        summary_results = analyzer.analyze_directory()
+        display_summary_results(summary_results)
+
+    if args.analysis_type in ['dependency', 'all']:
+        print("\nDependency Analysis:")
+        print("===================")
+        tracker = DependencyTracker()
+        dep_results = tracker.analyze_files(python_files)
+        display_dependency_results(dep_results)
+
+    if args.analysis_type in ['dependency', 'all']:
+        visualizer = DependencyVisualizer()
+        visualizer.create_visualization(dep_results)
+
+"""
+python code_analyzer.py --project-dir test_dependency --analysis-type summary
+python code_analyzer.py --project-dir test_dependency --analysis-type dependency
+python code_analyzer.py --project-dir test_dependency --analysis-type all
 if __name__ == "__main__":
     analyzer = CodeAnalyzer("data_analysis_project")
     results = analyzer.analyze_directory()
@@ -176,3 +344,5 @@ if __name__ == "__main__":
             print(f"  Complexity Score: {func['complexity']['complexity_score']}")
             print(f"  Branches: {func['complexity']['branches']}")
             print(f"  Function Calls: {func['complexity']['calls']}")
+
+"""
