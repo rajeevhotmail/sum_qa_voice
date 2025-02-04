@@ -1,5 +1,5 @@
 import argparse
-
+from document_generator import DocumentationGenerator
 from tree_sitter import Language, Parser
 import os
 from pathlib import Path
@@ -317,32 +317,12 @@ if __name__ == "__main__":
     if args.analysis_type in ['dependency', 'all']:
         visualizer = DependencyVisualizer()
         visualizer.create_visualization(dep_results)
+        doc_generator = DocumentationGenerator()
+        doc_generator.generate_docs(summary_results, dep_results, args.project_dir)
+        print(f"\nDocumentation generated: {doc_generator.doc_file}")
 
 """
 python code_analyzer.py --project-dir test_dependency --analysis-type summary
 python code_analyzer.py --project-dir test_dependency --analysis-type dependency
 python code_analyzer.py --project-dir test_dependency --analysis-type all
-if __name__ == "__main__":
-    analyzer = CodeAnalyzer("data_analysis_project")
-    results = analyzer.analyze_directory()
-
-    # Project Summary
-    print("\nProject Analysis:")
-    print(analyzer.generate_project_summary(results))
-
-    # Individual File Results
-    for result in results:
-        print(f"\nFile: {result['file']}")
-        print(f"Summary: {analyzer.generate_file_summary(result)}")
-        print(f"Purpose: {result.get('description', 'Data processing and analysis module')}")
-        print("Imports:")
-        for imp in result.get('imports', []):
-            print(f"  {imp}")
-        for func in result['functions']:
-            print(f"\n  {func['name']}:")
-            print(f"  Description: {func.get('description', 'Handles ' + func['name'].replace('_', ' '))}")
-            print(f"  Complexity Score: {func['complexity']['complexity_score']}")
-            print(f"  Branches: {func['complexity']['branches']}")
-            print(f"  Function Calls: {func['complexity']['calls']}")
-
 """

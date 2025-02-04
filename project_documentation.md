@@ -1,61 +1,38 @@
-# DATA_ANALYSIS_PROJECT
+# Project Documentation
 
-## Description
-A Python project consisting of 2 modules with 6 functions implementing various data processing and analysis capabilities.
+## Overview
+Analysis of project in: test_dependency
 
-## Features
-- Implements dump functionality
-- Implements getLogger functionality
-- Implements get_statistics functionality
-- Implements isoformat functionality
-- Implements now functionality
-- Supports resource management
+## Functions
 
-## Project Structure
-```
-├── analysis_engine.py
-├── data_processor.py
-```
+### update_inventory
+Function update_inventory
 
-## Module Details
-### analysis_engine.py
-A module implementing 4 functions for api: dump, api: isoformat, api: now, resource management, api: get_statistics
+### calculate_total
+Function calculate_total performs sorting operations and manipulates lists and processes strings
 
-#### Functions
-- `__init__()`: Utility function with no external operations
-- `_validate_input()`: Utility function with no external operations
-- `_compile_results()`: Handles api: isoformat, api: now, api: get_statistics
-- `export_analysis_history()`: Handles resource management, api: dump
+### process_order
+Function process_order performs sorting operations and manipulates lists and processes strings
 
-### data_processor.py
-A module implementing 2 functions for api: getlogger
+## Code Analysis
 
-#### Functions
-- `__init__()`: Handles api: getlogger
-- `get_statistics()`: Utility function with no external operations
+### Function: update_inventory
+**Complexity Score:** 4
+**Dependencies:** 
+**Risk Level:** 🟢 Green
 
-## Dependencies
-- Python 3.x
-- Required packages listed in requirements.txt
+### Function: calculate_total
+**Complexity Score:** 6
+**Dependencies:** sum
+**Risk Level:** 🟡 Yellow
 
-## AI Analysis Insights
+### Function: process_order
+**Complexity Score:** 7
+**Dependencies:** update_inventory, calculate_total
+**Risk Level:** 🟡 Yellow
 
-### analysis_engine.py
-Code analysis module: 48 lines of code
+## Contributing
+Guidelines for contributing to this project
 
-### data_processor.py
-Code analysis module: 46 lines of code
-
-## Architecture Patterns
-
-## Usage
-```python
-# Example usage of key functions
-# Using export_analysis_history
-result = export_analysis_history(input_data)
-# Using get_statistics
-result = get_statistics(input_data)
-```
-
-
-*Documentation generated on 2025-01-31*
+## License
+MIT License

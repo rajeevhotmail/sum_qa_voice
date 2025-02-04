@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+import sys
+import subprocess
+from code_analyzer import DependencyTracker
+
+def get_modified_files():
+    result = subprocess.run(['git', 'diff', '--cached', '--name-only'],
+                          capture_output=True, text=True)
+    return result.stdout.splitlines()
+
+def analyze_changes():
+    modified_files = get_modified_files()
+    tracker = DependencyTracker()
+    impact_report = tracker.analyze_impact(modified_files)
+
+    if impact_report['high_risk_changes']:
+        print("\n🚨 High Risk Changes Detected!")
+        print("The following functions will be affected:")
+        for func, impacts in impact_report['high_risk_changes'].items():
+            print(f"\n- {func} affects:")
+            for impact in impacts:
+                print(f"  • {impact}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    analyze_changes()

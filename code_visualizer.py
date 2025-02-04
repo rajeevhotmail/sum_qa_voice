@@ -7,6 +7,22 @@ class DependencyVisualizer:
     def __init__(self):
         self.graph = nx.DiGraph()
 
+    def calculate_node_colors(self, dependency_data):
+        colors = []
+        for node in self.graph.nodes():
+            if node in dependency_data:
+                deps = dependency_data[node]
+                complexity = len(deps.callees) + len(deps.variables_used)
+                if complexity > 8:
+                    colors.append('red')        # High complexity
+                elif complexity > 4:
+                    colors.append('yellow')     # Medium complexity
+                else:
+                    colors.append('lightgreen') # Low complexity
+            else:
+                colors.append('gray')  # Built-in functions
+        return colors
+
     def save_multiple_formats(self):
         # Save interactive HTML
         self.generate_interactive_plot()
@@ -22,8 +38,8 @@ class DependencyVisualizer:
 
 
     def create_visualization(self, dependency_data):
+        self.dependency_data = dependency_data  # Store the data as class attribute
         self.build_graph(dependency_data)
-        self.generate_interactive_plot()
         self.save_multiple_formats()
 
     def build_graph(self, dependency_data):
@@ -54,16 +70,25 @@ class DependencyVisualizer:
 
     def generate_interactive_plot(self):
         pos = nx.spring_layout(self.graph)
+        node_colors = self.calculate_node_colors(self.dependency_data)
+
         edge_x, edge_y = self.create_edge_traces(pos)
         node_x, node_y = self.create_node_traces(pos)
 
         fig = go.Figure(
             data=[
-                go.Scatter(x=edge_x, y=edge_y, line=dict(width=0.5, color='#888'), hoverinfo='none', mode='lines'),
-                go.Scatter(x=node_x, y=node_y, mode='markers+text', text=list(self.graph.nodes()), textposition='bottom center')
+                go.Scatter(x=edge_x, y=edge_y,
+                          line=dict(width=0.5, color='#888'),
+                          hoverinfo='none',
+                        mode='lines'),
+                go.Scatter(x=node_x, y=node_y,
+                          mode='markers+text',
+                          marker=dict(color=node_colors, size=20),
+                        text=list(self.graph.nodes()),
+                        textposition='bottom center')
             ],
             layout=go.Layout(
-                title='Code Dependency Map',
+                title='Code Dependency Map with Complexity Indicators',
                 showlegend=False,
                 hovermode='closest',
                 margin=dict(b=20, l=5, r=5, t=40)
@@ -71,3 +96,5 @@ class DependencyVisualizer:
         )
 
         fig.write_html("dependency_graph.html")
+
+
